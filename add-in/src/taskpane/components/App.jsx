@@ -41,6 +41,7 @@ const App = (props) => {
       <HeroList message="Discover what this add-in can do for you today!" items={listItems} />
       <TextInsertion insertText={insertText} />
       */}
+      <Header logo="assets/chatbot-128.png" title={title} message="Hi! I'm Fintelligent!" />
       <ChatInterface />
     </div>
   );

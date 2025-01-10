@@ -1,1 +1,1 @@
-# fintelligent
+# Fintelligent

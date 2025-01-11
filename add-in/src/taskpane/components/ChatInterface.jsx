@@ -7,6 +7,7 @@ const ChatInterface = () => {
   const [inputValue, setInputValue] = useState('');
   const [isInitialRender, setIsInitialRender] = useState(true);
   const [wsStatus, setWsStatus] = useState('disconnected');
+  const [isFirstMessage, setIsFirstMessage] = useState(true);  // Track if it's the first message
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const wsRef = useRef(null);
@@ -32,11 +33,18 @@ const ChatInterface = () => {
             error: true
           }]);
         } else {
-          setMessages(prev => [...prev, {
-            type: 'assistant',
-            content: response.content,
-            suggestions: response.suggestions || []
-          }]);
+          setMessages(prev => {
+            const newMessage = {
+              type: 'assistant',
+              content: response.content,
+              suggestions: isFirstMessage ? response.suggestions : undefined
+            };
+            // Update isFirstMessage after the first message is added
+            if (isFirstMessage) {
+              setTimeout(() => setIsFirstMessage(false), 0);
+            }
+            return [...prev, newMessage];
+          });
         }
       };
 
@@ -60,7 +68,7 @@ const ChatInterface = () => {
         wsRef.current.close();
       }
     };
-  }, []);
+  }, []); // Empty dependency array since connection should only be established once
 
   const handleSend = () => {
     if (inputValue.trim() && wsRef.current && wsStatus === 'connected') {

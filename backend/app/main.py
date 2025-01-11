@@ -24,15 +24,23 @@ ai_manager = AIManager(config.OPENAI_API_KEY)
 async def websocket_endpoint(websocket: WebSocket):
     await connection_manager.connect(websocket)
     try:
-        # Send welcome message
+        # Get initial Excel content
+        excel_content = None
+        if excel_manager.connect_to_excel():
+            excel_content = excel_manager.read_active_sheet()
+        
+        # Get welcome message and initial suggestions
+        welcome_message, initial_suggestions = ai_manager.analyze_message(
+            "Generate a welcome message appropriate for the current context.",
+            excel_content,
+            is_initial=True
+        )
+        
+        # Send welcome message with suggestions
         await websocket.send_json({
             "type": "assistant",
-            "content": "Hello! I'm here to help analyze your data. How can I assist you today?",
-            "suggestions": [
-                "Analyze current data",
-                "Help me get started",
-                "Show available features"
-            ]
+            "content": welcome_message,
+            "suggestions": initial_suggestions
         })
         
         while True:
@@ -40,29 +48,29 @@ async def websocket_endpoint(websocket: WebSocket):
             message = json.loads(data)
             print(f"Received message: {message}")  # Debug print
             
-            # Try to get Excel content, but don't fail if unavailable
+            # Update Excel content for each message
             excel_content = None
             if excel_manager.connect_to_excel():
                 excel_content = excel_manager.read_active_sheet()
             
             try:
                 if message.get("type") in ["message", "suggestion"]:
-                    # Process message with AI - now synchronous
-                    analysis, suggestions = ai_manager.analyze_message(
+                    # Process message with AI - ongoing conversation without suggestions
+                    analysis, _ = ai_manager.analyze_message(
                         message.get("content", ""), 
-                        excel_content
+                        excel_content,
+                        is_initial=False  # This ensures no suggestions for ongoing conversation
                     )
                     
                     await websocket.send_json({
                         "type": "assistant",
-                        "content": analysis,
-                        "suggestions": suggestions
+                        "content": analysis
+                        # No suggestions field for ongoing conversation
                     })
                 else:
                     await websocket.send_json({
                         "type": "assistant",
-                        "content": "I received your message but I'm not sure how to process it. Could you please try again?",
-                        "suggestions": ["Try sending a message", "Ask for help"]
+                        "content": "I received your message but I'm not sure how to process it. Could you please try again?"
                     })
                     
             except Exception as e:
@@ -75,12 +83,3 @@ async def websocket_endpoint(websocket: WebSocket):
                 
     except WebSocketDisconnect:
         connection_manager.disconnect(websocket)
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "app.main:app",
-        host=config.HOST,
-        port=config.PORT,
-        reload=config.DEBUG_MODE
-    )

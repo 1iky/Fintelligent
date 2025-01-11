@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Button, TextField, Box } from '@mui/material'; // Use Material UI components
-import { Add } from '@mui/icons-material'; // "+" Icon for PDF
-import { ArrowForward } from '@mui/icons-material'; // Arrow Icon for Suggestions
+import { Button, TextField, Box } from '@mui/material';
+import { Add, ArrowForward } from '@mui/icons-material';
 
 const ChatInterface = () => {
   const [messages, setMessages] = useState([{
@@ -35,7 +34,6 @@ const ChatInterface = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Handle the PDF file upload logic here
       console.log('File selected:', file);
     }
   };
@@ -75,89 +73,133 @@ const ChatInterface = () => {
         </Box>
       </Box>
 
-      {/* Outer Container for the Input Area */}
+      {/* Unified Container with Background */}
       <Box 
-        padding={1.5} 
-        display="flex" 
-        justifyContent="space-between" 
-        alignItems="center"
-        borderRadius="50px"
         sx={{
-          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
-          backgroundColor: '#f5f5f5',
-          width: '85%',
-          maxWidth: '400px', // Outer container with max width of 400px
-          position: 'fixed', // Fixed position at the bottom of the viewport
-          bottom: '1rem', // Adjusted bottom value for margin
+          position: 'fixed',
+          bottom: '1rem',
           left: '50%',
-          transform: 'translateX(-50%)', // Center the pill horizontally
-          zIndex: 10, // Ensure it's above other content
+          transform: 'translateX(-50%)',
+          width: '85%',
+          maxWidth: '400px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '25px',
+          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+          padding: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
         }}
       >
-        {/* "+" Button for PDF Upload */}
-        <Button
-          onClick={() => document.getElementById('pdf-input').click()} // Trigger file input
-          color="primary"
-          variant="contained"
+        {/* Text Input Area */}
+        <TextField
+          multiline
+          maxRows={8}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Ask about your data..."
           sx={{
-            padding: '4px',
-            minWidth: 'auto',
-            backgroundColor: '#d2d2d2',
-            borderRadius: '50%',
-            boxShadow: 'none',
-            height: '28px', // Reduced size
-            width: '28px', // Reduced size
+            width: '100%',
+            "& .MuiInputBase-root": {
+              maxHeight: '150px',
+              overflowY: 'auto',
+              backgroundColor: 'transparent',
+              padding: '6px 12px',
+              '& textarea': {
+                maxHeight: '150px',
+                overflowY: 'auto',
+                '&::-webkit-scrollbar': {
+                  width: '8px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: '#bdbdbd',
+                  borderRadius: '4px',
+                },
+              },
+            },
+            "& .MuiOutlinedInput-root": {
+              "& fieldset": {
+                border: 'none',
+              },
+              "&:hover fieldset": {
+                border: 'none',
+              },
+              "&.Mui-focused fieldset": {
+                border: 'none',
+              },
+            },
           }}
-        >
-          <Add className="h-5 w-5" />
-        </Button>
-
-        {/* Hidden File Input for PDF */}
-        <input
-          id="pdf-input"
-          type="file"
-          accept=".pdf"
-          style={{ display: 'none' }}
-          onChange={handleFileUpload}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
+          }}
         />
 
-        {/* Input TextField */}
-        <Box sx={{ flexGrow: 1, marginX: 1 }}>
-          <TextField
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask about your data..."
-            sx={{
-              width: '100%',
-              "& .MuiInputBase-root": {
-                height: '36px',
-                borderRadius: '20px',
-                backgroundColor: '#ffffff',
-              },
-            }}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') handleSend();
-            }}
-          />
-        </Box>
-
-        {/* Send Button */}
-        <Button
-          onClick={handleSend}
-          color="primary"
-          variant="contained"
+        
+        
+        
+        {/* Buttons Bar */}
+        <Box 
           sx={{
-            padding: '4px',
-            minWidth: 'auto',
-            backgroundColor: '#4CAF50',
-            borderRadius: '50%',
-            boxShadow: 'none',
-            height: '28px', // Reduced size
-            width: '28px', // Reduced size
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '0 4px',
           }}
         >
-          <ArrowForward className="h-5 w-5" />
-        </Button>
+          {/* "+" Button for PDF Upload */}
+          <Button
+            onClick={() => document.getElementById('pdf-input').click()}
+            color="primary"
+            variant="contained"
+            sx={{
+              padding: '4px',
+              minWidth: 'auto',
+              backgroundColor: '#d2d2d2',
+              borderRadius: '50%',
+              boxShadow: 'none',
+              height: '25px', 
+              width: '25px',
+              '&:hover': {
+                backgroundColor: '#bdbdbd',
+              },
+            }}
+          >
+            <Add className="h-5 w-5" />
+          </Button>
+
+          {/* Hidden File Input for PDF */}
+          <input
+            id="pdf-input"
+            type="file"
+            accept=".pdf"
+            style={{ display: 'none' }}
+            onChange={handleFileUpload}
+          />
+
+          {/* Send Button */}
+          <Button
+            onClick={handleSend}
+            color="primary"
+            variant="contained"
+            sx={{
+              padding: '4px',
+              minWidth: 'auto',
+              backgroundColor: '#4CAF50',
+              borderRadius: '50%',
+              boxShadow: 'none',
+              height: '25px', 
+              width: '25px',
+              '&:hover': {
+                backgroundColor: '#43a047',
+              },
+            }}
+          >
+            <ArrowForward className="h-5 w-5" />
+          </Button>
+        </Box>
       </Box>
     </Box>
   );

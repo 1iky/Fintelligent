@@ -3,44 +3,112 @@ import { Button, TextField, Box } from '@mui/material';
 import { Add, ArrowForward } from '@mui/icons-material';
 
 const ChatInterface = () => {
-  const [messages, setMessages] = useState([{
-    type: 'assistant',
-    content: 'I noticed your spreadsheet contains revenue data',
-    suggestions: [
-      'Analyze revenue trends',
-      'Create monthly summary',
-      'Generate visualizations'
-    ]
-  }]);
+  const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isInitialRender, setIsInitialRender] = useState(true);
+  const [wsStatus, setWsStatus] = useState('disconnected');
   const messagesEndRef = useRef(null);
-  const chatContainerRef = useRef(null);  // Reference to the chat container
+  const chatContainerRef = useRef(null);
+  const wsRef = useRef(null);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    const connectWebSocket = () => {
+      const ws = new WebSocket('ws://localhost:8000/ws');
+      
+      ws.onopen = () => {
+        console.log('Connected to WebSocket');
+        setWsStatus('connected');
+      };
+
+      ws.onmessage = (event) => {
+        console.log('Received message:', event.data);
+        const response = JSON.parse(event.data);
+        
+        if (response.error) {
+          setMessages(prev => [...prev, {
+            type: 'assistant',
+            content: response.message || 'An error occurred',
+            error: true
+          }]);
+        } else {
+          setMessages(prev => [...prev, {
+            type: 'assistant',
+            content: response.content,
+            suggestions: response.suggestions || []
+          }]);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setWsStatus('disconnected');
+        setTimeout(connectWebSocket, 5000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setWsStatus('error');
+      };
+
+      wsRef.current = ws;
+    };
+
+    connectWebSocket();
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
 
   const handleSend = () => {
-    if (inputValue.trim()) {
-      setMessages([...messages, { 
-        type: 'user', 
-        content: inputValue.trim() 
+    if (inputValue.trim() && wsRef.current && wsStatus === 'connected') {
+      // Add user message to chat
+      setMessages(prev => [...prev, {
+        type: 'user',
+        content: inputValue.trim()
       }]);
+
+      // Send message to WebSocket server
+      wsRef.current.send(JSON.stringify({
+        type: 'message',
+        content: inputValue.trim()
+      }));
+
       setInputValue('');
     }
   };
 
   const handleSuggestionClick = (suggestion) => {
-    setMessages([...messages, { 
-      type: 'user', 
-      content: suggestion 
-    }]);
+    if (wsRef.current && wsStatus === 'connected') {
+      setMessages(prev => [...prev, {
+        type: 'user',
+        content: suggestion
+      }]);
+
+      wsRef.current.send(JSON.stringify({
+        type: 'suggestion',
+        content: suggestion
+      }));
+    }
   };
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      console.log('File selected:', file);
+    if (file && wsRef.current && wsStatus === 'connected') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        wsRef.current.send(JSON.stringify({
+          type: 'file',
+          content: event.target.result
+        }));
+      };
+      reader.readAsText(file);
     }
   };
 
+  // Auto-scroll effect
   useEffect(() => {
     if (!isInitialRender) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,27 +116,45 @@ const ChatInterface = () => {
       setIsInitialRender(false);
     }
   }, [messages, isInitialRender]);
-  
-  
+
+  // Connection status indicator
+  const getStatusColor = () => {
+    switch (wsStatus) {
+      case 'connected':
+        return '#4CAF50';
+      case 'disconnected':
+        return '#f44336';
+      case 'error':
+        return '#ff9800';
+      default:
+        return '#bdbdbd';
+    }
+  };
+
   return (
-    <Box 
-      display="flex" 
-      flexDirection="column" 
-      height="80vh" 
-      bgcolor="white" 
-      alignItems="center"
-      sx={{ 
-        overflow: 'hidden' // Prevent outer container from scrolling
-      }}
-    >
+    <Box display="flex" flexDirection="column" height="80vh" bgcolor="white" alignItems="center"
+      sx={{ overflow: 'hidden' }}>
+      {/* Status Indicator */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: getStatusColor(),
+        }}
+      />
+      
       {/* Chat Area */}
       <Box 
         flexGrow={1} 
         width="100%"
         sx={{
           position: 'relative',
-          paddingBottom: '100px',  // Increased padding to prevent chat from being hidden
-          overflowY: 'auto', // Ensure the chat container is scrollable
+          paddingBottom: '100px',
+          overflowY: 'auto',
         }}
         ref={chatContainerRef}
       >
@@ -82,10 +168,10 @@ const ChatInterface = () => {
             padding: 2,
             overflowY: 'scroll',
             '&::-webkit-scrollbar': {
-              display: 'none'  // Hide scrollbar for Chrome/Safari/Newer Edges
+              display: 'none'
             },
-            scrollbarWidth: 'none',  // Hide scrollbar for Firefox
-            msOverflowStyle: 'none',  // Hide scrollbar for IE/Legacy Edge
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
             marginBottom: '80px',
           }}
         >
@@ -96,7 +182,7 @@ const ChatInterface = () => {
                   <Box className="text-sm leading-relaxed" sx={{ alignSelf: 'flex-start' }}>
                     {message.content}
                     {message.suggestions && (
-                      <Box display="flex" flexDirection="column" gap={1}>
+                      <Box display="flex" flexDirection="column" gap={1} mt={1}>
                         <Box className="text-sm text-gray-600">Would you like me to:</Box>
                         {message.suggestions.map((suggestion, i) => (
                           <Button 

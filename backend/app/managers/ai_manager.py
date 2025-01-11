@@ -11,7 +11,7 @@ class AIManager:
         if not excel_data or 'data' not in excel_data or not excel_data['data']:
             return [
                 "I have a question about financial data",
-                "How can I get started with Excel",
+                "How can I get started with Excel?",
                 "Learn about available features"
             ]
         else:

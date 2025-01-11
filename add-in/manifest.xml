@@ -4,7 +4,7 @@
   <Version>1.0.0.0</Version>
   <ProviderName>Contoso</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Fintelligent Assistant 🤖"/>
+  <DisplayName DefaultValue="🤖 Fintelligent Assistant"/>
   <Description DefaultValue="Your Excel Assistant"/>
   <IconUrl DefaultValue="https://localhost:3000/assets/chaticon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/chaticon-64.png"/>

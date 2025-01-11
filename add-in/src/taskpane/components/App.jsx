@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { makeStyles } from "@fluentui/react-components";
 import { Ribbon24Regular, LockOpen24Regular, DesignIdeas24Regular } from "@fluentui/react-icons";
 import { insertText } from "../taskpane";
+import Header from "./Header";
 import ChatInterface from "./ChatInterface";
 
 const useStyles = makeStyles({

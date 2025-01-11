@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button, TextField, Box } from '@mui/material';
 import { Add, ArrowForward } from '@mui/icons-material';
 
@@ -13,6 +13,9 @@ const ChatInterface = () => {
     ]
   }]);
   const [inputValue, setInputValue] = useState('');
+  const [isInitialRender, setIsInitialRender] = useState(true);
+  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);  // Reference to the chat container
 
   const handleSend = () => {
     if (inputValue.trim()) {
@@ -38,42 +41,100 @@ const ChatInterface = () => {
     }
   };
 
+  useEffect(() => {
+    if (!isInitialRender) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      setIsInitialRender(false);
+    }
+  }, [messages, isInitialRender]);
+  
+  
   return (
-    <Box display="flex" flexDirection="column" height="90vh" bgcolor="white" alignItems="center">
+    <Box 
+      display="flex" 
+      flexDirection="column" 
+      height="80vh" 
+      bgcolor="white" 
+      alignItems="center"
+      sx={{ 
+        overflow: 'hidden' // Prevent outer container from scrolling
+      }}
+    >
       {/* Chat Area */}
-      <Box flexGrow={1} padding={2} overflow="auto">
-        <Box display="flex" flexDirection="column" gap={2}>
-          {messages.map((message, index) => (
-            <Box key={index} display="flex" flexDirection="column" gap={1}>
-              {message.type === 'assistant' && (
-                <>
-                  <Box className="text-sm leading-relaxed">{message.content}</Box>
-                  {message.suggestions && (
-                    <Box display="flex" flexDirection="column" gap={1}>
-                      <Box className="text-sm text-gray-600">Would you like me to:</Box>
-                      {message.suggestions.map((suggestion, i) => (
-                        <Button 
-                          key={i}
-                          variant="outlined"
-                          fullWidth
-                          onClick={() => handleSuggestionClick(suggestion)}
-                        >
-                          {suggestion}
-                        </Button>
-                      ))}
-                    </Box>
-                  )}
-                </>
-              )}
-              {message.type === 'user' && (
-                <Box className="text-sm">{message.content}</Box>
-              )}
-            </Box>
-          ))}
+      <Box 
+        flexGrow={1} 
+        width="100%"
+        sx={{
+          position: 'relative',
+          paddingBottom: '100px',  // Increased padding to prevent chat from being hidden
+          overflowY: 'auto', // Ensure the chat container is scrollable
+        }}
+        ref={chatContainerRef}
+      >
+        <Box 
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: 2,
+            overflowY: 'scroll',
+            '&::-webkit-scrollbar': {
+              display: 'none'  // Hide scrollbar for Chrome/Safari/Newer Edges
+            },
+            scrollbarWidth: 'none',  // Hide scrollbar for Firefox
+            msOverflowStyle: 'none',  // Hide scrollbar for IE/Legacy Edge
+            marginBottom: '80px',
+          }}
+        >
+          <Box display="flex" flexDirection="column" gap={2}>
+            {messages.map((message, index) => (
+              <Box key={index} display="flex" flexDirection="column" gap={1}>
+                {message.type === 'assistant' && (
+                  <Box className="text-sm leading-relaxed" sx={{ alignSelf: 'flex-start' }}>
+                    {message.content}
+                    {message.suggestions && (
+                      <Box display="flex" flexDirection="column" gap={1}>
+                        <Box className="text-sm text-gray-600">Would you like me to:</Box>
+                        {message.suggestions.map((suggestion, i) => (
+                          <Button 
+                            key={i}
+                            variant="outlined"
+                            fullWidth
+                            onClick={() => handleSuggestionClick(suggestion)}
+                          >
+                            {suggestion}
+                          </Button>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                )}
+                {message.type === 'user' && (
+                  <Box 
+                    className="text-sm" 
+                    sx={{
+                      backgroundColor: '#e0f7fa',
+                      borderRadius: '20px',
+                      padding: '8px 16px',
+                      alignSelf: 'flex-end',
+                      maxWidth: '70%',
+                      wordWrap: 'break-word',
+                    }}
+                  >
+                    {message.content}
+                  </Box>
+                )}
+              </Box>
+            ))}
+            <div ref={messagesEndRef} />
+          </Box>
         </Box>
       </Box>
 
-      {/* Unified Container with Background */}
+      {/* Input Container */}
       <Box 
         sx={{
           position: 'fixed',
@@ -91,7 +152,6 @@ const ChatInterface = () => {
           gap: '8px',
         }}
       >
-        {/* Text Input Area */}
         <TextField
           multiline
           maxRows={8}
@@ -137,10 +197,6 @@ const ChatInterface = () => {
           }}
         />
 
-        
-        
-        
-        {/* Buttons Bar */}
         <Box 
           sx={{
             display: 'flex',
@@ -149,7 +205,6 @@ const ChatInterface = () => {
             padding: '0 4px',
           }}
         >
-          {/* "+" Button for PDF Upload */}
           <Button
             onClick={() => document.getElementById('pdf-input').click()}
             color="primary"
@@ -170,7 +225,6 @@ const ChatInterface = () => {
             <Add className="h-5 w-5" />
           </Button>
 
-          {/* Hidden File Input for PDF */}
           <input
             id="pdf-input"
             type="file"
@@ -179,7 +233,6 @@ const ChatInterface = () => {
             onChange={handleFileUpload}
           />
 
-          {/* Send Button */}
           <Button
             onClick={handleSend}
             color="primary"

@@ -7,14 +7,34 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    paddingBottom: "30px",
-    paddingTop: "100px",
+    justifyContent: "center",
+    paddingBottom: "15px",
+    paddingTop: "15px",
     backgroundColor: tokens.colorNeutralBackground3,
   },
+  roundedBox: {
+    display: "flex",
+    flexDirection: "row", 
+    alignItems: "center",
+    justifyContent: "space-between", 
+    padding: "20px", 
+    borderRadius: "25px",
+    backgroundColor: tokens.colorNeutralBackground1,
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+    width: "80%",
+    maxWidth: "400px", 
+    gap: "20px", 
+  },
+  logo: {
+    flex: "0 0 auto", 
+    height: "45px",
+  },
   message: {
-    fontSize: tokens.fontSizeHero900,
+    fontSize: tokens.fontSizeHero600,
     fontWeight: tokens.fontWeightRegular,
-    fontColor: tokens.colorNeutralBackgroundStatic,
+    color: tokens.colorNeutralForeground1,
+    textAlign: "left", 
+    flex: "1", 
   },
 });
 
@@ -24,8 +44,10 @@ const Header = (props) => {
 
   return (
     <section className={styles.welcome__header}>
-      <Image width="90" height="90" src={logo} alt={title} />
-      <h1 className={styles.message}>{message}</h1>
+      <div className={styles.roundedBox}>
+        <Image className={styles.logo} src={logo} alt={title} />
+        <h1 className={styles.message}>{message}</h1>
+      </div>
     </section>
   );
 };

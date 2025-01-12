@@ -186,17 +186,17 @@ const ChatInterface = () => {
     }
   };
 
-  // Status color helper function
+  // Status colour of WebSocket connection
   const getStatusColor = () => {
     switch (wsStatus) {
       case 'connected':
-        return '#4CAF50';  // Green
+        return '#4CAF50';  
       case 'disconnected':
-        return '#f44336';  // Red
+        return '#f44336';  
       case 'error':
-        return '#ff9800';  // Orange
+        return '#ff9800';  
       default:
-        return '#bdbdbd';  // Grey
+        return '#bdbdbd';  
     }
   };
 
@@ -268,7 +268,7 @@ const ChatInterface = () => {
                     )}
                     {message.suggestions && (
                       <Box display="flex" flexDirection="column" gap={1} mt={1}>
-                        <Box className="text-sm text-gray-600">Would you like me to:</Box>
+                        <Box className="text-sm text-gray-600"></Box>
                         {message.suggestions.map((suggestion, i) => (
                           <Button 
                             key={i}

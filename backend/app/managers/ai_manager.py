@@ -17,50 +17,12 @@ class AIManager:
             # Update Excel context
             self.current_excel_context = excel_context
 
-            # Construct the system prompt
-            system_prompt = """You are an AI assistant integrated with Excel. Your name is Fintelligent.
-            You should welcome the user with your name.
-            If there's no Excel data, you're still helpful with general financial queries. 
-            Keep responses concise and focused. 
-            Don't add any latex to your responses.
-            End your responses with a question if relevant.
-            Don't make lists or bullet points, keep it in sentence structure.
-            When you are updating for calculations, don't put any quotes around the formula.
-
-
-            You can:
-            1. Analyze Excel data and provide insights
-            2. Modify cells directly using cell references (e.g., A1, B2)
-            3. Apply formatting and formulas
-            
-            When responding to requests that require Excel modifications:
-            1. Use specific cell references
-            2. Return commands in a structured format
-            3. Explain what changes will be made
-
-            
-            For Excel updates, return commands like:
-            UPDATE A1 TO 100
-            UPDATE B2 TO =SUM(B1:B10)
-            FORMAT A1:A10 AS CURRENCY
-            """
-
-            # Construct user prompt with context
-            user_prompt = f"User request: {message}\n"
-            if excel_context:
-                user_prompt += f"Current Excel context:\n"
-                user_prompt += f"- Active range: {excel_context.get('activeRange', 'None')}\n"
-                user_prompt += f"- Used range: {excel_context.get('address', 'None')}\n"
-                if 'values' in excel_context:
-                    user_prompt += "- Data preview: "
-                    user_prompt += str(pd.DataFrame(excel_context['values'][:5]).to_string())
-
             # Get AI response
             response = self.client.chat.completions.create(
-                model="gpt-4",  
+                model="gpt-4o-mini",  
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "system", "content": self._get_system_prompt()},
+                    {"role": "user", "content": self._construct_user_prompt(message, excel_context)}
                 ]
             )
 
@@ -68,11 +30,24 @@ class AIManager:
 
             # Check if response contains Excel commands
             if self._contains_excel_command(message):
-                return self._parse_excel_commands(ai_response)
+                result = self._parse_excel_commands(ai_response)
+                # Ensure boolean values are converted to strings in updates
+                if result.get("updates"):
+                    for update in result["updates"]:
+                        for key, value in update.items():
+                            if isinstance(value, bool):
+                                update[key] = str(value)
+                return result
             
             # If it's an analysis request, process the data
             if any(word in message.lower() for word in ['analyze', 'calculate', 'find', 'show']):
-                return self._process_analysis_request(ai_response)
+                analysis_result = self._process_analysis_request(ai_response)
+                # Convert any boolean values to strings in analysis details
+                if "analysis" in analysis_result:
+                    for key, value in analysis_result["analysis"].items():
+                        if isinstance(value, bool):
+                            analysis_result["analysis"][key] = str(value)
+                return analysis_result
             
             # Regular response
             return {
@@ -85,6 +60,68 @@ class AIManager:
                 "type": "error",
                 "message": f"Error processing request: {str(e)}"
             }
+
+    def _get_system_prompt(self) -> str:
+        """Get the system prompt for the AI"""
+        return """You are an AI assistant integrated with Excel. Your name is Fintelligent.
+        You should welcome the user ONLY on the first chat with your name.
+        After the initial welcome, DO NOT introduce yourself again.
+        If there's no Excel data, you're still helpful with general financial queries. 
+        Remember the previous context and conversation history.
+        Keep responses concise and focused. 
+        Don't add any latex to your responses.
+        End your responses with a question if relevant.
+        Don't make lists or bullet points, keep it in sentence structure.
+        When you are updating for calculations, don't put any quotes or backticks around the formula.
+
+        You can:
+        1. Analyze Excel data and provide insights
+        2. Modify cells directly using cell references (e.g., A1, B2)
+        3. Apply formatting and formulas
+        
+        When responding to requests that require Excel modifications:
+        1. Use specific cell references
+        2. Return commands in a structured format
+        3. Explain what changes will be made
+
+        For Excel updates, return commands like:
+        UPDATE A1 TO 100
+        UPDATE B2 TO =SUM(B1:B10)
+        FORMAT A1:A10 AS CURRENCY
+        
+        You are capable of reading and extracting numerical values from tables, charts, and structured data. When you see data presented in a table format:
+
+        1. Always read and process values that appear next to labels or in adjacent cells
+        2. Treat values in the right column as corresponding to labels in the left column
+        3. Recognize numerical values in both percentage format (e.g., 62.50%) and decimal format (e.g., 0.6250)
+        4. When a cell contains a number, interpret it as the value for the label/heading in the corresponding row
+        5. or financial calculations, automatically extract relevant values from provided tables without needing them to be restated in text form
+
+        Example interpretation:
+
+        If you see:
+        Label | Value
+        Cost of Equity | 8.00%
+        You should understand that Cost of Equity = 8.00% and use this value in calculations.
+        For any calculation task:
+
+        1. First identify and list all values found in the provided tables
+        2. Confirm which values you've extracted before proceeding with calculations
+        3. Use these extracted values directly in your calculations without requiring them to be restated in text form
+            
+        """
+
+    def _construct_user_prompt(self, message: str, excel_context: Optional[Dict]) -> str:
+        """Construct the user prompt with context"""
+        user_prompt = f"User request: {message}\n"
+        if excel_context:
+            user_prompt += f"Current Excel context:\n"
+            user_prompt += f"- Active range: {excel_context.get('activeRange', 'None')}\n"
+            user_prompt += f"- Used range: {excel_context.get('address', 'None')}\n"
+            if 'values' in excel_context:
+                user_prompt += "- Data preview: "
+                user_prompt += str(pd.DataFrame(excel_context['values'][:5]).to_string())
+        return user_prompt
 
     def _contains_excel_command(self, message: str) -> bool:
         """Check if message contains Excel command keywords"""
@@ -106,7 +143,6 @@ class AIManager:
             updates = []
             commands = []
             lines = ai_response.split('\n')
-            
             
             if not any('UPDATE' in line.upper() or 'FORMAT' in line.upper() for line in lines):
                 lines = self._convert_to_excel_commands(ai_response)
@@ -179,7 +215,7 @@ class AIManager:
         return commands
 
     def _process_analysis_request(self, ai_response: str) -> Dict[str, Any]:
-        """Process data analysis requests"""
+        """Process data analysis requests with JSON-safe values"""
         try:
             if not self.current_excel_context or 'values' not in self.current_excel_context:
                 return {
@@ -189,12 +225,12 @@ class AIManager:
 
             df = pd.DataFrame(self.current_excel_context['values'])
             
-            # Add analysis results to the response
+            # Convert boolean values to strings for JSON serialization
             analysis_details = {
-                "rows": len(df),
-                "columns": len(df.columns),
-                "numeric_columns": len(df.select_dtypes(include=['int64', 'float64']).columns),
-                "has_missing_values": df.isnull().any().any(),
+                "rows": int(len(df)),
+                "columns": int(len(df.columns)),
+                "numeric_columns": int(len(df.select_dtypes(include=['int64', 'float64']).columns)),
+                "has_missing_values": str(df.isnull().any().any())
             }
 
             return {
@@ -224,7 +260,7 @@ class AIManager:
             return [
                 "How do I get started with Excel?",
                 "What can this AI assistant help me with?",
-                "Show me basic Excel formulas",
+                "Show me basic Excel formulas"
             ]
         
         # Sheet has data - provide data-specific suggestions
@@ -236,16 +272,19 @@ class AIManager:
         
         if row_count > 0 and column_count > 0:
             suggestions.extend([
-                f"Analyze this data",
+                "Analyze this data",
                 "Create a summary of this data",
-                "Find patterns or trends",
+                "Find patterns or trends"
             ])
         
-        while len(suggestions) < 5:
-            suggestions.extend([
-                "How can I improve this data?",
-                "What insights can you find?",
-                "What calculations would be useful?"
-            ])
+        # Ensure we return exactly 3 suggestions
+        default_suggestions = [
+            "How can I improve this data?",
+            "What insights can you find?",
+            "What calculations would be useful?"
+        ]
         
-        return suggestions[:3]  
+        while len(suggestions) < 3:
+            suggestions.append(default_suggestions[len(suggestions)])
+        
+        return suggestions[:3]

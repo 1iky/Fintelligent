@@ -4,6 +4,8 @@
 
 **Fintelligent** is an innovative AI-powered add-in for Excel, designed to streamline financial workflows, enhance productivity, and support informed decision-making. By integrating automation, advanced data processing, and AI-driven financial analysis, **Fintelligent** empowers users to effortlessly build, analyze, and refine financial models. With its natural language interface, you can ask questions about your data, explain complex formulas, and even generate insights or summaries. Fintelligent transforms your Excel experience by making financial modeling faster, smarter, and more accessible for everyone.
 
+![Fintelligent Excel](add-in/assets/excelscreen.png)
+
 ## Features
 ### AI-Powered Financial Assistance
 - Ask questions directly in Excel environment

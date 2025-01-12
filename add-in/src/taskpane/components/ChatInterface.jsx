@@ -2,17 +2,46 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button, TextField, Box } from '@mui/material';
 import { ArrowForward } from '@mui/icons-material';
 
+// New TypewriterText component
+const TypewriterText = ({ content, onComplete }) => {
+  const [displayedContent, setDisplayedContent] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  useEffect(() => {
+    if (currentIndex < content.length) {
+      const timer = setTimeout(() => {
+        setDisplayedContent(prev => prev + content[currentIndex]);
+        setCurrentIndex(currentIndex + 1);
+      }, 30); // Adjust speed here (lower = faster)
+      
+      return () => clearTimeout(timer);
+    } else if (onComplete) {
+      onComplete();
+    }
+  }, [currentIndex, content, onComplete]);
+  
+  return <div style={{ whiteSpace: 'pre-wrap' }}>{displayedContent}</div>;
+};
+
 const ChatInterface = () => {
+  const [messages, setMessages] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isInitialRender, setIsInitialRender] = useState(true);
+  const [wsStatus, setWsStatus] = useState('disconnected');
+  const [isFirstMessage, setIsFirstMessage] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const wsRef = useRef(null);
+
   // Handle suggestion clicks
   const handleSuggestionClick = (suggestion) => {
     if (wsRef.current && wsStatus === 'connected') {
-      // Add user message to chat
       setMessages(prev => [...prev, {
         type: 'user',
         content: suggestion
       }]);
 
-      // Send suggestion to WebSocket server
       wsRef.current.send(JSON.stringify({
         type: 'suggestion',
         content: suggestion
@@ -20,21 +49,11 @@ const ChatInterface = () => {
     }
   };
 
-  const [messages, setMessages] = useState([]);
-  const [inputValue, setInputValue] = useState('');
-  const [isInitialRender, setIsInitialRender] = useState(true);
-  const [wsStatus, setWsStatus] = useState('disconnected');
-  const [isFirstMessage, setIsFirstMessage] = useState(true);
-  const messagesEndRef = useRef(null);
-  const chatContainerRef = useRef(null);
-  const wsRef = useRef(null);
-
   // Initialize Excel and WebSocket
   useEffect(() => {
     const initializeExcel = async () => {
       try {
         await Office.onReady();
-        // Get the current worksheet data
         await syncExcelData();
       } catch (error) {
         console.error('Error initializing Excel:', error);
@@ -52,10 +71,10 @@ const ChatInterface = () => {
       ws.onmessage = async (event) => {
         console.log('Received message:', event.data);
         const response = JSON.parse(event.data);
+        setIsTyping(true);
         
         try {
           if (response.type === 'excel_update') {
-            // Handle Excel update commands
             let updateSuccess = true;
             try {
               await Excel.run(async (context) => {
@@ -78,20 +97,23 @@ const ChatInterface = () => {
               type: 'assistant',
               content: response.content,
               updates: updateSuccess ? response.updates : undefined,
-              error: !updateSuccess
+              error: !updateSuccess,
+              isNew: true
             }]);
           } else if (response.error) {
             setMessages(prev => [...prev, {
               type: 'assistant',
               content: response.message || 'An error occurred',
-              error: true
+              error: true,
+              isNew: true
             }]);
           } else {
             setMessages(prev => {
               const newMessage = {
                 type: 'assistant',
                 content: response.content,
-                suggestions: isFirstMessage ? response.suggestions : undefined
+                suggestions: isFirstMessage ? response.suggestions : undefined,
+                isNew: true
               };
               if (isFirstMessage) {
                 setTimeout(() => setIsFirstMessage(false), 0);
@@ -104,7 +126,8 @@ const ChatInterface = () => {
           setMessages(prev => [...prev, {
             type: 'assistant',
             content: 'Failed to process the update.',
-            error: true
+            error: true,
+            isNew: true
           }]);
         }
       };
@@ -164,7 +187,6 @@ const ChatInterface = () => {
         content: inputValue.trim()
       }]);
 
-      // Get current Excel context before sending message
       try {
         await Excel.run(async (context) => {
           const sheet = context.workbook.worksheets.getActiveWorksheet();
@@ -189,18 +211,24 @@ const ChatInterface = () => {
     }
   };
 
-  // Status colour of WebSocket connection
   const getStatusColor = () => {
     switch (wsStatus) {
       case 'connected':
-        return '#4CAF50';  
+        return '#4CAF50';
       case 'disconnected':
-        return '#f44336';  
+        return '#f44336';
       case 'error':
-        return '#ff9800';  
+        return '#ff9800';
       default:
-        return '#bdbdbd';  
+        return '#bdbdbd';
     }
+  };
+
+  const handleTypewriterComplete = (messageIndex) => {
+    setMessages(prev => prev.map((msg, idx) => 
+      idx === messageIndex ? { ...msg, isNew: false } : msg
+    ));
+    setIsTyping(false);
   };
 
   // Auto-scroll effect
@@ -258,8 +286,15 @@ const ChatInterface = () => {
               <Box key={index} display="flex" flexDirection="column" gap={1}>
                 {message.type === 'assistant' && (
                   <Box className="text-sm leading-relaxed" sx={{ alignSelf: 'flex-start' }}>
-                    {message.content}
-                    {message.updates && !message.error && (
+                    {message.isNew ? (
+                      <TypewriterText 
+                        content={message.content}
+                        onComplete={() => handleTypewriterComplete(index)}
+                      />
+                    ) : (
+                      message.content
+                    )}
+                    {message.updates && !message.error && !message.isNew && (
                       <Box sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
                         <div className="text-xs text-gray-600">Updates made:</div>
                         {message.updates.map((update, i) => (
@@ -269,7 +304,7 @@ const ChatInterface = () => {
                         ))}
                       </Box>
                     )}
-                    {message.suggestions && (
+                    {message.suggestions && !message.isNew && (
                       <Box display="flex" flexDirection="column" gap={1} mt={1}>
                         <Box className="text-sm text-gray-600"></Box>
                         {message.suggestions.map((suggestion, i) => (
@@ -332,6 +367,7 @@ const ChatInterface = () => {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="Ask about your Excel data..."
+          disabled={isTyping}
           sx={{
             width: '100%',
             "& .MuiInputBase-root": {
@@ -366,6 +402,7 @@ const ChatInterface = () => {
             onClick={handleSend}
             color="primary"
             variant="contained"
+            disabled={isTyping}
             sx={{
               padding: '4px',
               minWidth: 'auto',

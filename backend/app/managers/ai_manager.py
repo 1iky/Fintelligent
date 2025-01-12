@@ -1,4 +1,3 @@
-# backend/app/managers/ai_manager.py
 from openai import OpenAI
 from typing import Tuple, List, Optional
 

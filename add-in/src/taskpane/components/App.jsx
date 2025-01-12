@@ -18,7 +18,7 @@ const App = (props) => {
   
   return (
     <div className={styles.root}>
-      <Header logo="assets/chaticon-80.png" title={title} message="Hi! I'm Fintelligent." />
+      <Header logo="assets/chaticon-64.png" title={title} message="Hi! I'm Fintelligent." />
       <ChatInterface />
     </div>
   );

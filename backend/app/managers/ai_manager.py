@@ -36,7 +36,13 @@ class AIManager:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a helpful AI assistant analyzing Excel financial data. If there's no Excel data, you're still helpful with general financial queries. Keep responses concise and focused."},
+                    {"role": "system", "content": """You are a helpful AI assistant analyzing Excel financial data. 
+                                                    If there's no Excel data, you're still helpful with general financial queries. 
+                                                    Keep responses concise and focused. 
+                                                    Don't add any latex to your responses.
+                                                    End your responses with a question if relevant.
+                                                    Don't make lists or bullet points, keep it in sentence structure.
+                     """},
                     {"role": "user", "content": prompt}
                 ]
             )

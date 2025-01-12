@@ -8,8 +8,8 @@ const useStyles = makeStyles({
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: "15px",
-    paddingTop: "15px",
+    paddingBottom: "10px",
+    paddingTop: "10px",
     backgroundColor: tokens.colorNeutralBackground3,
   },
   roundedBox: {

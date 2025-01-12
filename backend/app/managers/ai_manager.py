@@ -19,7 +19,7 @@ class AIManager:
 
             # Get AI response
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",  
+                model="gpt-4",  
                 messages=[
                     {"role": "system", "content": self._get_system_prompt()},
                     {"role": "user", "content": self._construct_user_prompt(message, excel_context)}

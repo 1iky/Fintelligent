@@ -18,7 +18,8 @@ class AIManager:
             self.current_excel_context = excel_context
 
             # Construct the system prompt
-            system_prompt = """You are an AI assistant integrated with Excel.
+            system_prompt = """You are an AI assistant integrated with Excel. Your name is Fintelligent.
+            You should welcome the user with your name.
             If there's no Excel data, you're still helpful with general financial queries. 
             Keep responses concise and focused. 
             Don't add any latex to your responses.
@@ -209,28 +210,42 @@ class AIManager:
             }
 
     def get_suggestions(self, excel_context: Optional[Dict] = None) -> List[str]:
-        """Generate context-aware suggestions"""
+        """Generate context-aware suggestions based on whether sheet is empty or has data"""
+        
+        # Check if excel_context is None or indicates an empty sheet
+        is_empty = (
+            excel_context is None 
+            or excel_context.get('is_empty', True) 
+            or not excel_context.get('values')
+        )
+        
+        if is_empty:
+            # Return generic suggestions for empty sheets
+            return [
+                "How do I get started with Excel?",
+                "What can this AI assistant help me with?",
+                "Show me basic Excel formulas",
+            ]
+        
+        # Sheet has data - provide data-specific suggestions
         suggestions = []
         
-        if excel_context and 'values' in excel_context:
-            df = pd.DataFrame(excel_context['values'])
-            
-            # Add data-specific suggestions
-            if len(df.select_dtypes(include=['int64', 'float64']).columns) > 0:
-                suggestions.extend([
-                    "Analyze this data",
-                    "Create a summary analysis",
-                    "Find trends in the data"
-                ])
-            
-            if excel_context.get('activeRange'):
-                suggestions.append(f"Analyze selected range: {excel_context['activeRange']}")
+        # Get data characteristics
+        row_count = excel_context.get('row_count', 0)
+        column_count = excel_context.get('column_count', 0)
         
-        # Add general suggestions
-        suggestions.extend([
-            "I have a question about financial data",
-            "How can I get started with Excel?",
-            "Learn about available features"
-        ])
+        if row_count > 0 and column_count > 0:
+            suggestions.extend([
+                f"Analyze this data",
+                "Create a summary of this data",
+                "Find patterns or trends",
+            ])
         
-        return suggestions[:5]  
+        while len(suggestions) < 5:
+            suggestions.extend([
+                "How can I improve this data?",
+                "What insights can you find?",
+                "What calculations would be useful?"
+            ])
+        
+        return suggestions[:3]  

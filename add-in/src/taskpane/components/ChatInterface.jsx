@@ -53,32 +53,59 @@ const ChatInterface = () => {
         console.log('Received message:', event.data);
         const response = JSON.parse(event.data);
         
-        if (response.error) {
-          setMessages(prev => [...prev, {
-            type: 'assistant',
-            content: response.message || 'An error occurred',
-            error: true
-          }]);
-        } else if (response.type === 'excel_update') {
-          // Handle Excel update commands
-          await handleExcelUpdate(response.updates);
-          setMessages(prev => [...prev, {
-            type: 'assistant',
-            content: 'Excel updated successfully!',
-            updates: response.updates
-          }]);
-        } else {
-          setMessages(prev => {
-            const newMessage = {
+        try {
+          if (response.type === 'excel_update') {
+            // Handle Excel update commands
+            let updateSuccess = true;
+            try {
+              await Excel.run(async (context) => {
+                const sheet = context.workbook.worksheets.getActiveWorksheet();
+                
+                for (const update of response.updates) {
+                  const { cell, value } = update;
+                  const range = sheet.getRange(cell);
+                  range.values = [[value]];
+                }
+                
+                await context.sync();
+              });
+            } catch (error) {
+              console.error('Error updating Excel:', error);
+              updateSuccess = false;
+            }
+
+            setMessages(prev => [...prev, {
               type: 'assistant',
               content: response.content,
-              suggestions: isFirstMessage ? response.suggestions : undefined
-            };
-            if (isFirstMessage) {
-              setTimeout(() => setIsFirstMessage(false), 0);
-            }
-            return [...prev, newMessage];
-          });
+              updates: updateSuccess ? response.updates : undefined,
+              error: !updateSuccess
+            }]);
+          } else if (response.error) {
+            setMessages(prev => [...prev, {
+              type: 'assistant',
+              content: response.message || 'An error occurred',
+              error: true
+            }]);
+          } else {
+            setMessages(prev => {
+              const newMessage = {
+                type: 'assistant',
+                content: response.content,
+                suggestions: isFirstMessage ? response.suggestions : undefined
+              };
+              if (isFirstMessage) {
+                setTimeout(() => setIsFirstMessage(false), 0);
+              }
+              return [...prev, newMessage];
+            });
+          }
+        } catch (error) {
+          console.error('Error processing message:', error);
+          setMessages(prev => [...prev, {
+            type: 'assistant',
+            content: 'Failed to process the update.',
+            error: true
+          }]);
         }
       };
 
@@ -127,30 +154,6 @@ const ChatInterface = () => {
       });
     } catch (error) {
       console.error('Error syncing Excel data:', error);
-    }
-  };
-
-  // Handle Excel updates from AI
-  const handleExcelUpdate = async (updates) => {
-    try {
-      await Excel.run(async (context) => {
-        const sheet = context.workbook.worksheets.getActiveWorksheet();
-        
-        for (const update of updates) {
-          const { cell, value } = update;
-          const range = sheet.getRange(cell);
-          range.values = [[value]];
-        }
-        
-        await context.sync();
-      });
-    } catch (error) {
-      console.error('Error updating Excel:', error);
-      setMessages(prev => [...prev, {
-        type: 'assistant',
-        content: 'Failed to update Excel.',
-        error: true
-      }]);
     }
   };
 
@@ -256,7 +259,7 @@ const ChatInterface = () => {
                 {message.type === 'assistant' && (
                   <Box className="text-sm leading-relaxed" sx={{ alignSelf: 'flex-start' }}>
                     {message.content}
-                    {message.updates && (
+                    {message.updates && !message.error && (
                       <Box sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
                         <div className="text-xs text-gray-600">Updates made:</div>
                         {message.updates.map((update, i) => (
